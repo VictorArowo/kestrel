@@ -4,8 +4,8 @@
 use std::sync::Arc;
 
 use axum::extract::{Query, Request, State};
-use axum::middleware::{self, Next};
 use axum::http::StatusCode;
+use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -56,12 +56,20 @@ async fn require_token(request: Request, next: Next) -> Response {
         .and_then(|v| v.strip_prefix("Bearer "));
     // Compare in constant time so the token can't be guessed byte by byte.
     let ok = given.is_some_and(|g| {
-        g.len() == expected.len() && g.bytes().zip(expected.bytes()).fold(0u8, |acc, (a, b)| acc | (a ^ b)) == 0
+        g.len() == expected.len()
+            && g.bytes()
+                .zip(expected.bytes())
+                .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+                == 0
     });
     if ok {
         next.run(request).await
     } else {
-        (StatusCode::UNAUTHORIZED, Json(json!({ "error": "missing or wrong engine token" }))).into_response()
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "missing or wrong engine token" })),
+        )
+            .into_response()
     }
 }
 

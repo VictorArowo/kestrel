@@ -1,0 +1,60 @@
+# Kestrel on one server. Lives at /opt/kestrel next to .env and data/; CI copies it there.
+services:
+  engine:
+    image: ghcr.io/victorarowo/kestrel-engine:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      KESTREL_ENGINE_HOST: 0.0.0.0
+      KESTREL_CACHE_DIR: /data/cache
+    volumes:
+      - ./data:/data
+
+  web:
+    image: ghcr.io/victorarowo/kestrel-web:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/data/kestrel.db
+      KESTREL_ENGINE_URL: http://engine:7070
+      KESTREL_MIGRATE_ON_START: "1"
+    volumes:
+      - ./data:/data
+    depends_on:
+      - engine
+
+  # Paper trading: a cycle every 15 minutes. Each portfolio still decides only once per bar.
+  paper:
+    image: curlimages/curl:8.15.0
+    restart: unless-stopped
+    env_file: .env
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        sleep 60
+        while true; do
+          curl -fsS --max-time 290 -H "Authorization: Bearer $$CRON_SECRET" http://web:3000/api/paper/run || true
+          echo
+          sleep 900
+        done
+    depends_on:
+      - web
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  caddy_data:
+  caddy_config:

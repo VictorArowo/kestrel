@@ -1,0 +1,7 @@
+kestrel.victorarowo.com {
+	encode zstd gzip
+	# The agent streams its work as server-sent events; flush them straight through.
+	reverse_proxy web:3000 {
+		flush_interval -1
+	}
+}

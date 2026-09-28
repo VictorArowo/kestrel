@@ -32,6 +32,9 @@ enum Command {
     Serve {
         #[arg(long, env = "KESTREL_ENGINE_PORT", default_value_t = 7070)]
         port: u16,
+        /// 0.0.0.0 inside a container, so the app can reach it on the container network.
+        #[arg(long, env = "KESTREL_ENGINE_HOST", default_value = "127.0.0.1")]
+        host: std::net::IpAddr,
     },
     /// Backtest a strategy file and print a summary.
     Backtest {
@@ -59,15 +62,15 @@ async fn main() -> Result<()> {
     let data = Arc::new(DataClient::from_env(&cli.cache_dir));
 
     match cli.command {
-        Command::Serve { port } => {
+        Command::Serve { port, host } => {
             if !data.has_keys() {
                 tracing::warn!("no Alpaca keys set: crypto works, stocks will fail");
             }
             let app = api::router(api::AppState { data })
                 .layer(CorsLayer::permissive())
                 .layer(TraceLayer::new_for_http());
-            let listener = tokio::net::TcpListener::bind(("127.0.0.1", port)).await?;
-            tracing::info!("engine listening on http://127.0.0.1:{port}");
+            let listener = tokio::net::TcpListener::bind((host, port)).await?;
+            tracing::info!("engine listening on http://{host}:{port}");
             axum::serve(listener, app)
                 .with_graceful_shutdown(shutdown())
                 .await?;

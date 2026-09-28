@@ -1,5 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 
 /**
@@ -9,7 +9,8 @@ import * as schema from "./schema";
  */
 export const DATABASE_URL = process.env.DATABASE_URL ?? "file:../data/kestrel.db";
 
-const globalForDb = globalThis as unknown as { client?: Client };
+type Db = LibSQLDatabase<typeof schema>;
+const globalForDb = globalThis as unknown as { db?: Db };
 
 function connect(): Client {
   const client = createClient({ url: DATABASE_URL, authToken: process.env.DATABASE_AUTH_TOKEN });
@@ -21,9 +22,21 @@ function connect(): Client {
   return client;
 }
 
-// Reuse one client across hot reloads in development.
-const client = globalForDb.client ?? connect();
-if (process.env.NODE_ENV !== "production") globalForDb.client = client;
+function instance(): Db {
+  // One client per process, reused across hot reloads in development.
+  globalForDb.db ??= drizzle(connect(), { schema });
+  return globalForDb.db;
+}
 
-export const db = drizzle(client, { schema });
+/**
+ * Connects on first use rather than on import, so `next build` can load every route without a
+ * database being there.
+ */
+export const db = new Proxy({} as Db, {
+  get(_, prop) {
+    const real = instance();
+    const value = Reflect.get(real, prop, real);
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
 export * from "./schema";
