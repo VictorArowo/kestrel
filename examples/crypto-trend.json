@@ -1,0 +1,18 @@
+{
+  "name": "Crypto trend",
+  "description": "Hold the strongest large-cap coins while Bitcoin is in an uptrend.",
+  "universe": { "symbols": ["BTC/USD", "ETH/USD", "SOL/USD", "LINK/USD", "AVAX/USD"] },
+  "rules": [
+    {
+      "when": { "all": [
+        { "schedule": "weekly" },
+        { "gt": [{ "price": { "symbol": "BTC/USD" } }, { "sma": { "period": 100, "symbol": "BTC/USD" } }] }
+      ]},
+      "then": { "rebalance": { "top": 2, "by": { "return": { "period": 30 } } } }
+    },
+    {
+      "when": { "lt": [{ "price": { "symbol": "BTC/USD" } }, { "sma": { "period": 100, "symbol": "BTC/USD" } }] },
+      "then": { "sell": {} }
+    }
+  ]
+}

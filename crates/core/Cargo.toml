@@ -1,0 +1,13 @@
+[package]
+name = "kestrel-core"
+description = "Strategy format, indicators, evaluator and backtester"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_path_to_error.workspace = true
