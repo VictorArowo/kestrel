@@ -1,6 +1,3 @@
-mod api;
-mod market;
-
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -10,6 +7,7 @@ use clap::{Parser, Subcommand};
 use kestrel_core::backtest::{self, BacktestConfig};
 use kestrel_core::{english, strategy, validate};
 use kestrel_data::{DataClient, day_start};
+use kestrel_server::{api, market};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 

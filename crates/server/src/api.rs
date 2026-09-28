@@ -3,7 +3,8 @@
 
 use std::sync::Arc;
 
-use axum::extract::{Query, State};
+use axum::extract::{Query, Request, State};
+use axum::middleware::{self, Next};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -27,8 +28,7 @@ pub struct AppState {
 }
 
 pub fn router(state: AppState) -> Router {
-    Router::new()
-        .route("/health", get(|| async { Json(json!({ "ok": true })) }))
+    let v1 = Router::new()
         .route("/v1/symbols", get(symbols))
         .route("/v1/snapshot", get(snapshot))
         .route("/v1/bars", get(bars))
@@ -36,7 +36,33 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/backtest", post(run_backtest))
         .route("/v1/optimize", post(run_optimize))
         .route("/v1/decide", post(run_decide))
+        .layer(middleware::from_fn(require_token));
+    Router::new()
+        .route("/health", get(|| async { Json(json!({ "ok": true })) }))
+        .merge(v1)
         .with_state(state)
+}
+
+/// When `KESTREL_ENGINE_TOKEN` is set (in production), every API call needs it as a bearer token.
+/// The engine spends Alpaca quota and CPU, so only the web app should be able to call it.
+async fn require_token(request: Request, next: Next) -> Response {
+    let Ok(expected) = std::env::var("KESTREL_ENGINE_TOKEN") else {
+        return next.run(request).await;
+    };
+    let given = request
+        .headers()
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "));
+    // Compare in constant time so the token can't be guessed byte by byte.
+    let ok = given.is_some_and(|g| {
+        g.len() == expected.len() && g.bytes().zip(expected.bytes()).fold(0u8, |acc, (a, b)| acc | (a ^ b)) == 0
+    });
+    if ok {
+        next.run(request).await
+    } else {
+        (StatusCode::UNAUTHORIZED, Json(json!({ "error": "missing or wrong engine token" }))).into_response()
+    }
 }
 
 pub struct ApiError {

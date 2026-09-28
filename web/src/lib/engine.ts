@@ -153,7 +153,10 @@ async function call<T>(path: string, init?: { body?: unknown; query?: Record<str
   try {
     res = await fetch(url, {
       method: init?.body === undefined ? "GET" : "POST",
-      headers: init?.body === undefined ? undefined : { "content-type": "application/json" },
+      headers: {
+        ...(init?.body === undefined ? {} : { "content-type": "application/json" }),
+        ...(process.env.KESTREL_ENGINE_TOKEN ? { authorization: `Bearer ${process.env.KESTREL_ENGINE_TOKEN}` } : {}),
+      },
       body: init?.body === undefined ? undefined : JSON.stringify(init.body),
       cache: "no-store",
     });

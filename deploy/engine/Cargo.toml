@@ -1,0 +1,26 @@
+# The engine as a Vercel Rust function. Its own workspace, so Vercel can build it from this
+# directory; the engine code itself comes from crates/ by path.
+[package]
+name = "kestrel-engine-vercel"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+kestrel-data = { path = "../../crates/data" }
+kestrel-server = { path = "../../crates/server" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tower = "0.5"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+vercel_runtime = { version = "2.4", features = ["axum"] }
+
+[[bin]]
+name = "engine"
+path = "api/engine.rs"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+opt-level = 3
