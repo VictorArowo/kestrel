@@ -210,3 +210,39 @@ That's the behaviour the instructions ask for.
 **Dev friction:** the app's preview tool reads the launch config of the folder the chat
 started in (tape), so the kestrel dev servers are registered there too (that file is
 git-ignored). Port 3000 is taken by another project's container, so the web app runs on 3100.
+
+## 2026-09-28 · The UI
+
+**Design.** The Terminal direction, followed literally: black canvas, hairline panels with a
+2px radius, amber `#FFB000` as the only accent (brand, prompt caret, primary buttons, focus
+rings), green and red only for up and down. Type is Martian Mono at 87.5% width for everything
+numeric and structural, plus Instrument Sans for the agent's prose and your prompts, since
+paragraphs in a monospace face are tiring. The nav doubles as a function-key strip: `1`-`4`
+jump between sections when you're not typing.
+
+**Chart colours were computed, not picked.** The obvious pair (bright amber and a soft blue)
+failed a palette validator: too light for a dark surface, and the blue had so little chroma it
+read as grey. The pair that passes every check, colour-blind separation included, is
+`#C98300` for the strategy and `#4A8AD6` for the benchmark. Bright amber stays for text only.
+Both curves are shown as percent return from the start on one axis, so there's never a second
+y-scale.
+
+**The chat is a terminal log.** Your messages start with an amber `›`. The model's reasoning
+summaries collapse to a single "thinking: ..." line. Each tool call is a log line (◆ while
+running, ◇ when done) that opens into a data card: the plan with an Approve button, a
+backtest with a chart and a strategy-versus-benchmark table, an optimiser grid showing
+training and validation side by side, a market-conditions table, and the deploy card with a
+starting-cash input.
+
+**Second live run, through the browser**: "Buy Bitcoin when it closes at a new 50-day high and
+sell when it closes below its 20-day average". The agent read "new 50-day high" as a close
+above *yesterday's* 50-day high (`offset: 1`), which is the only version that can ever fire,
+because today's close is part of today's high. Result: +73.6% against +130.2% for holding
+Bitcoin, drawdown −39.7% against −76.7%, 29 trades, "gains were concentrated in 2023–24, so
+the result is not evidence of consistent performance." The page was navigated away
+mid-run, and the run still finished and saved: the agent keeps going when the browser
+disconnects.
+
+Small things caught while looking at it: the chart's canvas can't read CSS variables for its
+font; a gap between two percentages is "pts", not "%"; the agent writes Markdown links to
+strategy pages, so the renderer now handles links (internal ones only).

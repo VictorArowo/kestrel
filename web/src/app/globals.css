@@ -1,26 +1,146 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Kestrel: a trading terminal. Black canvas, hairline panels, one amber accent.
+   Green and red only ever mean up and down. */
+@theme {
+  --color-canvas: #000000;
+  --color-panel: #0b0f12;
+  --color-raised: #121920;
+  --color-line: #1c252c;
+  --color-line-strong: #2a3640;
+  --color-ink: #d5dde3;
+  --color-dim: #7d8b96;
+  --color-faint: #4c5963;
+  --color-amber: #ffb000;
+  --color-amber-deep: #3a2a00;
+  --color-up: #35d07f;
+  --color-down: #ff5a5f;
+  /* Chart series, validated against the panel surface. */
+  --color-series-strategy: #c98300;
+  --color-series-benchmark: #4a8ad6;
+
+  --font-mono: var(--font-martian), ui-monospace, monospace;
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    color-scheme: dark;
+  }
+  body {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.35rem;
+    font-stretch: 87.5%;
+    font-variant-numeric: tabular-nums;
+  }
+  ::selection {
+    background: var(--color-amber);
+    color: #000;
+  }
+  :focus-visible {
+    outline: 1px solid var(--color-amber);
+    outline-offset: 2px;
+  }
+  a {
+    text-decoration: none;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .panel {
+    background: var(--color-panel);
+    border: 1px solid var(--color-line);
+    border-radius: 2px;
+  }
+  /* Agent prose reads better proportional; everything numeric stays mono. */
+  .prose-agent {
+    font-family: var(--font-sans);
+    font-stretch: 100%;
+    font-size: 0.9375rem;
+    line-height: 1.55rem;
+    max-width: 68ch;
+  }
+  .prose-agent p + p,
+  .prose-agent p + ul,
+  .prose-agent ul + p {
+    margin-top: 0.6rem;
+  }
+  .prose-agent ul {
+    list-style: none;
+    padding-left: 0;
+  }
+  .prose-agent li {
+    padding-left: 1rem;
+    position: relative;
+  }
+  .prose-agent li::before {
+    content: "–";
+    position: absolute;
+    left: 0;
+    color: var(--color-faint);
+  }
+  .prose-agent strong {
+    color: #fff;
+    font-weight: 600;
+  }
+  .prose-agent code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-amber);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 1.875rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 2px;
+    color: var(--color-ink);
+    background: var(--color-raised);
+    cursor: pointer;
+  }
+  .btn:hover {
+    border-color: var(--color-dim);
+  }
+  .btn-primary {
+    background: var(--color-amber);
+    border-color: var(--color-amber);
+    color: #000;
+    font-weight: 600;
+  }
+  .btn-primary:hover {
+    background: #ffc233;
+    border-color: #ffc233;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .kbd {
+    display: inline-block;
+    min-width: 1.1rem;
+    padding: 0 0.25rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 2px;
+    color: var(--color-dim);
+    font-size: var(--text-2xs);
+    line-height: 1rem;
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
