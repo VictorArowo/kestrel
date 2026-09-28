@@ -1,13 +1,15 @@
 // One paper trading cycle: settle fills, ask the engine what each strategy wants after the latest
 // close, send those orders to Alpaca, and record equity. Safe to run as often as you like: each
-// portfolio decides once per bar, and a Postgres advisory lock stops cycles overlapping.
+// portfolio decides once per bar, and a lease stops cycles overlapping.
 
-import { and, eq, inArray } from "drizzle-orm";
-import { db, equitySnapshots, orders, portfolios, sql, strategies } from "@/db";
+import { randomUUID } from "node:crypto";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { db, equitySnapshots, leases, orders, portfolios, strategies } from "@/db";
 import { type Book, type EngineOrder, engine } from "@/lib/engine";
 import { AlpacaError, alpaca } from "./alpaca";
 
-const LOCK_ID = 707070;
+const LEASE = "paper-cycle";
+const LEASE_SECONDS = 600;
 const OPEN_STATUSES = ["new", "accepted", "pending_new", "partially_filled", "held", "accepted_for_bidding", "calculated"];
 
 export type CycleReport = {
@@ -18,21 +20,31 @@ export type CycleReport = {
 };
 
 export async function runCycle(): Promise<CycleReport> {
-  const conn = await sql.reserve();
+  const holder = randomUUID();
+  if (!(await acquire(holder))) return { skipped: "another cycle is running", settled: 0, decided: [], errors: [] };
   try {
-    const [{ locked }] = await conn`select pg_try_advisory_lock(${LOCK_ID}) as locked`;
-    if (!locked) return { skipped: "another cycle is running", settled: 0, decided: [], errors: [] };
-    try {
-      const report: CycleReport = { settled: 0, decided: [], errors: [] };
-      report.settled = await settle(report.errors);
-      await decideAll(report);
-      return report;
-    } finally {
-      await conn`select pg_advisory_unlock(${LOCK_ID})`;
-    }
+    const report: CycleReport = { settled: 0, decided: [], errors: [] };
+    report.settled = await settle(report.errors);
+    await decideAll(report);
+    return report;
   } finally {
-    conn.release();
+    await db.delete(leases).where(and(eq(leases.name, LEASE), eq(leases.holder, holder)));
   }
+}
+
+/** Takes the lease if nobody holds it or the holder's has expired (a crashed cycle). */
+async function acquire(holder: string): Promise<boolean> {
+  const expiresAt = new Date(Date.now() + LEASE_SECONDS * 1000);
+  const rows = await db
+    .insert(leases)
+    .values({ name: LEASE, holder, expiresAt })
+    .onConflictDoUpdate({
+      target: leases.name,
+      set: { holder, expiresAt },
+      setWhere: sql`${leases.expiresAt} < now()`,
+    })
+    .returning({ holder: leases.holder });
+  return rows[0]?.holder === holder;
 }
 
 /** Applies filled orders to their portfolio's book. */

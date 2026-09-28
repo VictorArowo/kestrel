@@ -1,20 +1,24 @@
 import Link from "next/link";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { conversations, db } from "@/db";
 import { ago } from "@/lib/format";
+import { isOwner } from "@/lib/owner";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Chats" };
 
 export default async function Chats() {
+  const owner = await isOwner();
   const rows = await db
     .select({ id: conversations.id, title: conversations.title, status: conversations.status, updatedAt: conversations.updatedAt })
     .from(conversations)
+    .where(owner ? undefined : eq(conversations.public, true))
     .orderBy(desc(conversations.updatedAt))
     .limit(100);
   return (
     <div className="max-w-[860px]">
-      <h1 className="text-dim mb-3">Chats</h1>
+      <h1 className="text-dim mb-1">{owner ? "Chats" : "Recorded sessions"}</h1>
+      {!owner && <p className="text-2xs text-faint mb-3">Real sessions with the agent, played back as they happened.</p>}
       {rows.length === 0 ? (
         <p className="text-xs text-dim">
           No chats yet. <Link href="/" className="text-amber">Describe a strategy</Link> to start one.

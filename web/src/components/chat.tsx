@@ -173,7 +173,17 @@ export function Chat({
   );
 }
 
-function BlockView({ block, canApprove, onApprove }: { block: Block; canApprove: boolean; onApprove: () => void }) {
+export function BlockView({
+  block,
+  canApprove,
+  onApprove,
+  readOnly = false,
+}: {
+  block: Block;
+  canApprove: boolean;
+  onApprove: () => void;
+  readOnly?: boolean;
+}) {
   switch (block.kind) {
     case "user":
       return (
@@ -213,7 +223,7 @@ function BlockView({ block, canApprove, onApprove }: { block: Block; canApprove:
             <span className="text-dim">{TOOL_LABELS[block.name] ?? block.name}</span>
             {block.pending && <span className="text-faint">running</span>}
           </div>
-          <ToolCard name={block.name} card={block.card} canApprove={canApprove} onApprove={onApprove} />
+          <ToolCard name={block.name} card={block.card} canApprove={canApprove} onApprove={onApprove} readOnly={readOnly} />
         </div>
       );
     case "error":

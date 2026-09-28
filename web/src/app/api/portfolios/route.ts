@@ -1,8 +1,11 @@
+import { ownerOnly } from "@/lib/owner";
 import { eq } from "drizzle-orm";
 import { db, portfolios, strategies } from "@/db";
 
 /** Deploys a saved strategy to a new paper portfolio. Only ever called from a user's click. */
 export async function POST(request: Request) {
+  const denied = await ownerOnly();
+  if (denied) return denied;
   const { strategyId, initialCash } = (await request.json()) as { strategyId?: string; initialCash?: number };
   if (!strategyId || !/^[0-9a-f-]{36}$/.test(strategyId)) return Response.json({ error: "unknown strategy" }, { status: 400 });
   if (typeof initialCash !== "number" || !(initialCash >= 1000) || initialCash > 10_000_000) {

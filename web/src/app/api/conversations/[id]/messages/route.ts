@@ -1,7 +1,13 @@
+import { ownerOnly } from "@/lib/owner";
 import { BusyError, runAgent, type AgentEvent } from "@/agent/run";
+
+// An agent turn can take a few minutes of tool calls.
+export const maxDuration = 300;
 
 /** Sends a message and streams the agent's work back as server-sent events. */
 export async function POST(request: Request, ctx: RouteContext<"/api/conversations/[id]/messages">) {
+  const denied = await ownerOnly();
+  if (denied) return denied;
   const { id } = await ctx.params;
   const { text } = (await request.json()) as { text?: string };
   if (!text?.trim()) return Response.json({ error: "empty message" }, { status: 400 });

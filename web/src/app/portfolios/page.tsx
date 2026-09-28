@@ -3,22 +3,25 @@ import { desc, eq } from "drizzle-orm";
 import { db, portfolios, strategies } from "@/db";
 import { money } from "@/lib/format";
 import { RunCycleButton } from "@/components/portfolio-controls";
+import { isOwner } from "@/lib/owner";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Portfolios" };
 
 export default async function Portfolios() {
+  const owner = await isOwner();
   const rows = await db
     .select({ p: portfolios, strategyName: strategies.name })
     .from(portfolios)
     .innerJoin(strategies, eq(portfolios.strategyId, strategies.id))
+    .where(owner ? undefined : eq(strategies.public, true))
     .orderBy(desc(portfolios.createdAt));
   return (
     <div>
       <h1 className="text-dim mb-1">Paper portfolios</h1>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <p className="text-2xs text-faint">Simulated money on Alpaca&apos;s paper account. Each portfolio trades one strategy after every close.</p>
-        <RunCycleButton />
+        {owner && <RunCycleButton />}
       </div>
       {rows.length === 0 ? (
         <p className="text-xs text-dim">

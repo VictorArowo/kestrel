@@ -28,6 +28,8 @@ export const conversations = pgTable("conversations", {
   items: jsonb("items").$type<ResponseInputItem[]>().notNull().default([]),
   /** idle, running, or awaiting_approval (a plan is waiting for the user). */
   status: text("status").notNull().default("idle"),
+  /** Shown to demo visitors as a replay. */
+  public: boolean("public").notNull().default(false),
   ...timestamps,
 });
 
@@ -118,3 +120,13 @@ export const equitySnapshots = pgTable(
   },
   (t) => [primaryKey({ columns: [t.portfolioId, t.t] })],
 );
+
+/**
+ * Named leases, for work that must not overlap (paper trading cycles). A row lease works
+ * through connection poolers, where session advisory locks don't.
+ */
+export const leases = pgTable("leases", {
+  name: text("name").primaryKey(),
+  holder: text("holder").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});

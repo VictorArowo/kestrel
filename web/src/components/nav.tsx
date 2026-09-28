@@ -5,14 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 const ITEMS = [
-  { key: "1", href: "/", label: "new", match: (p: string) => p === "/" },
+  { key: "1", href: "/", label: "home", match: (p: string) => p === "/" },
   { key: "2", href: "/strategies", label: "strategies", match: (p: string) => p.startsWith("/strategies") },
   { key: "3", href: "/portfolios", label: "portfolios", match: (p: string) => p.startsWith("/portfolios") },
   { key: "4", href: "/chats", label: "chats", match: (p: string) => p.startsWith("/chat") },
 ];
 
 /** The function-key strip. Number keys jump between sections when you're not typing. */
-export function Nav() {
+export function Nav({ owner }: { owner: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -49,7 +49,7 @@ export function Nav() {
             );
           })}
         </nav>
-        <span className="ml-auto hidden sm:block text-2xs text-faint">paper trading only</span>
+        <span className="ml-auto hidden sm:block text-2xs text-faint">{owner ? "paper trading only" : "read-only demo"}</span>
       </div>
     </header>
   );

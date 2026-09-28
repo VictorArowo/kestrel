@@ -27,17 +27,20 @@ export function ToolCard({
   card,
   canApprove,
   onApprove,
+  readOnly = false,
 }: {
   name: string;
   card: unknown;
   canApprove: boolean;
   onApprove: () => void;
+  /** Demo visitors see the cards without the buttons that change anything. */
+  readOnly?: boolean;
 }) {
   if (card == null) return null;
   if (isError(card)) return <ErrorView card={card} />;
   switch (name) {
     case "propose_plan":
-      return <PlanCard card={card as PlanData} canApprove={canApprove} onApprove={onApprove} />;
+      return <PlanCard card={card as PlanData} canApprove={canApprove && !readOnly} onApprove={onApprove} />;
     case "run_backtest":
       return <BacktestCard card={card as { strategy: StrategySpec; backtest: BacktestSummary }} />;
     case "optimize_strategy":
@@ -45,7 +48,7 @@ export function ToolCard({
     case "save_strategy":
       return <SavedCard card={card as SavedData} />;
     case "propose_deployment":
-      return <DeployCard card={card as DeployData} />;
+      return <DeployCard card={card as DeployData} readOnly={readOnly} />;
     case "get_snapshots":
       return <SnapshotsCard card={card as { snapshots: (Snapshot | { symbol: string; error: string })[] }} />;
     case "validate_strategy":
@@ -217,7 +220,7 @@ function SavedCard({ card }: { card: SavedData }) {
 
 type DeployData = { strategyId: string; name: string; initialCash: number; note: string; metrics: Metrics };
 
-function DeployCard({ card }: { card: DeployData }) {
+function DeployCard({ card, readOnly }: { card: DeployData; readOnly: boolean }) {
   const [cash, setCash] = useState(card.initialCash);
   const [state, setState] = useState<{ status: "idle" | "busy" | "done" | "error"; id?: string; error?: string }>({
     status: "idle",
@@ -236,7 +239,9 @@ function DeployCard({ card }: { card: DeployData }) {
     <div className="panel p-4 max-w-2xl border-amber-deep">
       <div className="text-ink">Paper trade {card.name}</div>
       <p className="text-xs text-dim mt-1">{card.note}</p>
-      {state.status === "done" ? (
+      {readOnly ? (
+        <p className="mt-3 text-2xs text-faint">In the demo, only the owner can deploy.</p>
+      ) : state.status === "done" ? (
         <Link href={`/portfolios/${state.id}`} className="mt-3 inline-block text-amber text-xs">
           Deployed. Open the portfolio
         </Link>

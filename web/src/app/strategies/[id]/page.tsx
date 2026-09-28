@@ -2,18 +2,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
-import { db, strategies } from "@/db";
+import { conversations, db, strategies } from "@/db";
 import { DeployButton } from "@/components/deploy-button";
 import { EquityChart } from "@/components/equity-chart";
 import { MetricTable, TradeStats } from "@/components/metrics";
 import { date, money, num, pct, pts, tone } from "@/lib/format";
 import { yearlyReturns } from "@/lib/returns";
+import { isOwner } from "@/lib/owner";
 
 export const dynamic = "force-dynamic";
 
 async function load(id: string) {
   if (!/^[0-9a-f-]{36}$/.test(id)) return null;
-  return (await db.query.strategies.findFirst({ where: eq(strategies.id, id) })) ?? null;
+  const s = await db.query.strategies.findFirst({ where: eq(strategies.id, id) });
+  if (!s || (!s.public && !(await isOwner()))) return null;
+  return s;
 }
 
 export async function generateMetadata(props: PageProps<"/strategies/[id]">): Promise<Metadata> {
@@ -24,6 +27,10 @@ export async function generateMetadata(props: PageProps<"/strategies/[id]">): Pr
 export default async function StrategyPage(props: PageProps<"/strategies/[id]">) {
   const s = await load((await props.params).id);
   if (!s) notFound();
+  const owner = await isOwner();
+  const chatIsPublic = s.conversationId
+    ? !!(await db.query.conversations.findFirst({ where: eq(conversations.id, s.conversationId), columns: { public: true } }))?.public
+    : false;
   const b = s.backtest;
   const bench = b.benchmark;
   const years = yearlyReturns(b.equity);
@@ -47,12 +54,12 @@ export default async function StrategyPage(props: PageProps<"/strategies/[id]">)
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {s.conversationId && (
+          {s.conversationId && (owner || chatIsPublic) && (
             <Link href={`/chat/${s.conversationId}`} className="btn">
-              Open chat
+              {owner ? "Open chat" : "Watch it being built"}
             </Link>
           )}
-          <DeployButton strategyId={s.id} />
+          {owner && <DeployButton strategyId={s.id} />}
         </div>
       </header>
 

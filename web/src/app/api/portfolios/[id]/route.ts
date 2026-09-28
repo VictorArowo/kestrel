@@ -1,8 +1,11 @@
+import { ownerOnly } from "@/lib/owner";
 import { eq } from "drizzle-orm";
 import { db, portfolios } from "@/db";
 
 /** Pauses, resumes or stops a paper portfolio. A paused portfolio keeps its positions. */
 export async function PATCH(request: Request, ctx: RouteContext<"/api/portfolios/[id]">) {
+  const denied = await ownerOnly();
+  if (denied) return denied;
   const { id } = await ctx.params;
   const { status } = (await request.json()) as { status?: string };
   if (!status || !["active", "paused", "stopped"].includes(status)) {

@@ -6,12 +6,17 @@ import { db, equitySnapshots, orders, portfolios, strategies } from "@/db";
 import { EquityChart } from "@/components/equity-chart";
 import { PortfolioControls, RunCycleButton } from "@/components/portfolio-controls";
 import { date, money, num, pct, tone } from "@/lib/format";
+import { isOwner } from "@/lib/owner";
 
 export const dynamic = "force-dynamic";
 
 async function load(id: string) {
   if (!/^[0-9a-f-]{36}$/.test(id)) return null;
-  return (await db.query.portfolios.findFirst({ where: eq(portfolios.id, id) })) ?? null;
+  const p = await db.query.portfolios.findFirst({ where: eq(portfolios.id, id) });
+  if (!p) return null;
+  if (await isOwner()) return p;
+  const s = await db.query.strategies.findFirst({ where: eq(strategies.id, p.strategyId), columns: { public: true } });
+  return s?.public ? p : null;
 }
 
 export async function generateMetadata(props: PageProps<"/portfolios/[id]">): Promise<Metadata> {
@@ -22,6 +27,7 @@ export async function generateMetadata(props: PageProps<"/portfolios/[id]">): Pr
 export default async function PortfolioPage(props: PageProps<"/portfolios/[id]">) {
   const p = await load((await props.params).id);
   if (!p) notFound();
+  const owner = await isOwner();
   const [strategy, snapshots, recentOrders] = await Promise.all([
     db.query.strategies.findFirst({ where: eq(strategies.id, p.strategyId), columns: { id: true, name: true } }),
     db.select().from(equitySnapshots).where(eq(equitySnapshots.portfolioId, p.id)).orderBy(asc(equitySnapshots.t)),
@@ -54,7 +60,7 @@ export default async function PortfolioPage(props: PageProps<"/portfolios/[id]">
         <div className="text-right space-y-2">
           <div className="text-2xl text-ink">{money(latest)}</div>
           <div className={`text-xs ${tone(latest - p.initialCash)}`}>{pct((latest / p.initialCash - 1) * 100, 2)} since deployment</div>
-          <PortfolioControls id={p.id} status={p.status} />
+          {owner && <PortfolioControls id={p.id} status={p.status} />}
         </div>
       </header>
 
@@ -64,7 +70,7 @@ export default async function PortfolioPage(props: PageProps<"/portfolios/[id]">
             ? `Last decided on the ${date(p.lastDecidedT)} close. Stock orders fill at the next open; crypto fills right away.`
             : "Not checked yet. The strategy is checked after each daily close."}
         </span>
-        <RunCycleButton />
+        {owner && <RunCycleButton />}
       </section>
 
       <section className="panel p-4">

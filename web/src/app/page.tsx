@@ -1,18 +1,26 @@
 import Link from "next/link";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { conversations, db, strategies } from "@/db";
 import { NewStrategy } from "@/components/new-strategy";
 import { StrategyTable } from "@/components/strategy-table";
 import { ago } from "@/lib/format";
+import { isOwner } from "@/lib/owner";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const owner = await isOwner();
   const [recentStrategies, recentChats] = await Promise.all([
-    db.select().from(strategies).orderBy(desc(strategies.createdAt)).limit(8),
+    db
+      .select()
+      .from(strategies)
+      .where(owner ? undefined : eq(strategies.public, true))
+      .orderBy(desc(strategies.createdAt))
+      .limit(8),
     db
       .select({ id: conversations.id, title: conversations.title, updatedAt: conversations.updatedAt })
       .from(conversations)
+      .where(owner ? undefined : eq(conversations.public, true))
       .orderBy(desc(conversations.updatedAt))
       .limit(6),
   ]);
@@ -27,7 +35,27 @@ export default async function Home() {
           The agent writes your idea as rules, backtests them on up to ten years of daily data with next-day fills, slippage
           and fees, and compares the result with simply holding the market.
         </p>
-        <NewStrategy />
+        {owner ? (
+          <NewStrategy />
+        ) : (
+          <div className="panel p-4">
+            <p className="text-xs text-dim mb-3">
+              This is a read-only demo. Watch the agent build and test a strategy in one of these recorded sessions:
+            </p>
+            <ul className="space-y-1.5">
+              {recentChats.map((c) => (
+                <li key={c.id}>
+                  <Link href={`/chat/${c.id}`} className="font-sans text-ink hover:text-amber flex gap-2" style={{ fontStretch: "100%" }}>
+                    <span className="text-amber font-mono" aria-hidden>
+                      ▸
+                    </span>
+                    {c.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <section>
@@ -40,7 +68,7 @@ export default async function Home() {
         <StrategyTable rows={recentStrategies} />
       </section>
 
-      {recentChats.length > 0 && (
+      {owner && recentChats.length > 0 && (
         <section>
           <h2 className="text-dim mb-2">Recent chats</h2>
           <ul className="text-xs">
