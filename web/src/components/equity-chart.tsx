@@ -55,7 +55,7 @@ export function EquityChart({
         textColor: "#7d8b96",
         // Canvas text can't read CSS variables, so resolve the page's font stack.
         fontFamily: getComputedStyle(document.body).fontFamily,
-        fontSize: 10,
+        fontSize: 11,
         attributionLogo: false,
       },
       grid: { vertLines: { visible: false }, horzLines: { color: "#141b21" } },

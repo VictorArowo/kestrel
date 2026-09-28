@@ -22,8 +22,13 @@
   --font-mono: var(--font-martian), ui-monospace, monospace;
   --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
 
-  --text-2xs: 0.6875rem;
-  --text-2xs--line-height: 1rem;
+  /* One step up from Tailwind's defaults: dense, but readable. */
+  --text-2xs: 0.75rem;
+  --text-2xs--line-height: 1.1rem;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.4rem;
 }
 
 @layer base {
@@ -34,8 +39,8 @@
   }
   body {
     font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    line-height: 1.35rem;
+    font-size: 0.875rem;
+    line-height: 1.45rem;
     font-stretch: 87.5%;
     font-variant-numeric: tabular-nums;
   }
@@ -62,8 +67,8 @@
   .prose-agent {
     font-family: var(--font-sans);
     font-stretch: 100%;
-    font-size: 0.9375rem;
-    line-height: 1.55rem;
+    font-size: 1rem;
+    line-height: 1.65rem;
     max-width: 68ch;
   }
   .prose-agent p + p,
@@ -91,15 +96,15 @@
   }
   .prose-agent code {
     font-family: var(--font-mono);
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--color-amber);
   }
   .btn {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    height: 1.875rem;
-    padding: 0 0.75rem;
+    height: 2rem;
+    padding: 0 0.875rem;
     border: 1px solid var(--color-line-strong);
     border-radius: 2px;
     color: var(--color-ink);

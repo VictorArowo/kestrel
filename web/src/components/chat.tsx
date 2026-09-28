@@ -161,7 +161,7 @@ export function Chat({
               status === "awaiting_approval" ? "Approve the plan above, or say what to change" : "Ask for a change, a new test, or a different idea"
             }
             aria-label="Message the agent"
-            className="flex-1 resize-none bg-transparent outline-none text-ink placeholder:text-faint font-sans text-[0.9375rem] leading-6"
+            className="flex-1 resize-none bg-transparent outline-none text-ink placeholder:text-faint font-sans text-base leading-7"
             style={{ fontStretch: "100%" }}
           />
           <button type="submit" className="btn" disabled={running || !draft.trim()}>
@@ -191,7 +191,7 @@ export function BlockView({
           <span className="text-amber" aria-hidden>
             ›
           </span>
-          <span className="font-sans text-[0.9375rem] leading-6 whitespace-pre-wrap" style={{ fontStretch: "100%" }}>
+          <span className="font-sans text-base leading-7 whitespace-pre-wrap" style={{ fontStretch: "100%" }}>
             {block.text}
           </span>
         </div>

@@ -49,7 +49,22 @@ export function Nav({ owner }: { owner: boolean }) {
             );
           })}
         </nav>
-        <span className="ml-auto hidden sm:block text-2xs text-faint">{owner ? "paper trading only" : "read-only demo"}</span>
+        <Link
+          href="/owner"
+          className="ml-auto text-2xs text-faint hover:text-ink whitespace-nowrap"
+          aria-current={pathname === "/owner" ? "page" : undefined}
+        >
+          {owner ? (
+            <>
+              <span className="hidden sm:inline">signed in as owner</span>
+              <span className="sm:hidden">owner</span>
+            </>
+          ) : (
+            <>
+              <span className="hidden sm:inline">read-only demo · </span>sign in
+            </>
+          )}
+        </Link>
       </div>
     </header>
   );

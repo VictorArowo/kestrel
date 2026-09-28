@@ -45,6 +45,9 @@ and restarts. On the server everything lives in `/opt/kestrel` (`.env`, `data/ke
 `backups/`), owned by the `deploy` user; SSH in as `deploy@157.245.139.252`. The DNS record is
 an A record in Vercel DNS (victorarowo.com is managed there).
 
+The live site is a read-only demo for visitors. Sign in at `/owner` with `KESTREL_OWNER_TOKEN`
+(from `.env`) to run the agent, deploy and manage portfolios; it sets a 90-day cookie.
+
 Only production runs paper trading: don't run `npm run paper` locally, since both would trade
 on the same Alpaca paper account.
 
