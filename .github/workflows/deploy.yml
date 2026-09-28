@@ -5,6 +5,10 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # Journal entries and READMEs don't need a deploy.
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   workflow_dispatch:
 
 permissions:
