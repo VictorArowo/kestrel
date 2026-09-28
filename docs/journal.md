@@ -121,3 +121,36 @@ slippage each way. The engine was right; the strategy was bad. It returned +42.7
 
 That's the kind of result the agent needs to see and say out loud, instead of tuning its way
 around it.
+
+## 2026-09-28 · Where things stand (handoff to a new chat)
+
+The research and the engine were built in a chat that started in the old `tape` folder. The
+build continues in a chat opened on this folder.
+
+**Done**
+- Rust engine: strategy format, validation, English, indicators, backtester, metrics,
+  grid optimizer with train/validation split, HTTP API (`/v1/symbols`, `/v1/snapshot`,
+  `/v1/bars`, `/v1/validate`, `/v1/backtest`, `/v1/optimize`). 17 tests, clippy clean.
+- Next.js 16 app scaffolded in `web/` with `@anthropic-ai/sdk`, `zod`, `drizzle-orm`,
+  `postgres`, `lightweight-charts`, `drizzle-kit` installed. Nothing written in it yet.
+- Postgres in Docker on port 5439.
+
+**Next, in order**
+1. DB schema (Drizzle): conversations (messages as JSON), strategies (spec, English, latest
+   backtest), portfolios (virtual sub-ledgers on one Alpaca paper account), orders, equity
+   snapshots.
+2. Agent route: `claude-opus-5`, adaptive thinking (summarized display), streaming manual tool
+   loop, `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`), `eager_input_streaming`
+   on tools with zod validation. Tools: search_symbols, get_snapshot, validate_strategy,
+   run_backtest, optimize, propose_plan (ends the turn, waits for approval), save_strategy,
+   propose_deployment (shows a Deploy button; the user's click deploys, not the agent). SSE to
+   the browser.
+3. UI in the Terminal look: chat with inline result cards, strategy page (English rules,
+   equity vs benchmark, metrics, trades), portfolios, explore.
+4. Paper trading: add `/v1/decide` to the engine (strategy + book + date → orders, via the
+   same `decide()`), and a TS worker that calls it after the close and places Alpaca paper
+   orders, then reconciles fills.
+5. Demo mode, README, deploy.
+
+**Needs from Victor:** Alpaca paper API keys and an Anthropic API key in `.env` (template in
+`.env.example`). Crypto works without Alpaca keys; stocks and paper trading don't.
