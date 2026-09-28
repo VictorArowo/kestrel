@@ -9,7 +9,8 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{Duration, NaiveDate, Utc};
-use kestrel_core::backtest::{self, BacktestConfig};
+use kestrel_core::backtest::{self, BacktestConfig, Book};
+use kestrel_core::eval::Evaluator;
 use kestrel_core::optimize::{self, OptimizeSpec};
 use kestrel_core::strategy::{self, Strategy};
 use kestrel_core::validate::{self, Issue, Severity};
@@ -34,6 +35,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/validate", post(validate_strategy))
         .route("/v1/backtest", post(run_backtest))
         .route("/v1/optimize", post(run_optimize))
+        .route("/v1/decide", post(run_decide))
         .with_state(state)
 }
 
@@ -324,4 +326,73 @@ async fn run_optimize(
         .map_err(|e| ApiError::bad_request(e.to_string()))?
         .map_err(ApiError::bad_request)?;
     Ok(Json(serde_json::to_value(result).expect("serialisable")))
+}
+
+#[derive(Deserialize)]
+struct DecideRequest {
+    strategy: Value,
+    book: Book,
+    /// The last completed trading day to decide on. Defaults to yesterday.
+    as_of: Option<String>,
+}
+
+/// What a live strategy wants to do now: `backtest::decide` on the latest completed bar, so paper
+/// trading makes exactly the decisions a backtest would have made on the same data.
+async fn run_decide(
+    State(st): State<AppState>,
+    Json(req): Json<DecideRequest>,
+) -> ApiResult<Value> {
+    let (s, _) = parse_strategy(req.strategy)?;
+    let as_of = req
+        .as_of
+        .as_deref()
+        .map(parse_date)
+        .transpose()?
+        .unwrap_or_else(yesterday)
+        .min(yesterday());
+    let mut symbols: Vec<String> = s.symbols();
+    for sym in req.book.positions.keys() {
+        if !symbols.contains(sym) {
+            symbols.push(sym.clone());
+        }
+    }
+    let warmup = market::warmup_days(s.lookback()) + 10;
+    let market = market::load(&st.data, &symbols, as_of - Duration::days(warmup), as_of).await?;
+
+    // The same timeline a backtest uses: every date any universe symbol has a bar.
+    let mut dates: Vec<i64> = s
+        .universe
+        .symbols
+        .iter()
+        .filter_map(|sym| market.bars(sym))
+        .flat_map(|bars| bars.iter().map(|b| b.t))
+        .filter(|t| *t <= day_start(as_of))
+        .collect();
+    dates.sort_unstable();
+    dates.dedup();
+    let Some(&t) = dates.last() else {
+        return Err(ApiError::bad_request("no bars for this universe yet"));
+    };
+    let prev_t = dates.len().checked_sub(2).map(|i| dates[i]);
+
+    let book = req.book;
+    let result = tokio::task::spawn_blocking(move || {
+        let ev = Evaluator::new(&market);
+        let orders = backtest::decide(&s, &ev, &book, t, prev_t);
+        let prices: std::collections::BTreeMap<String, Option<f64>> = symbols
+            .iter()
+            .map(|sym| (sym.clone(), market.close_at(sym, t)))
+            .collect();
+        json!({
+            "t": t,
+            "date": kestrel_data::date_of(t).to_string(),
+            "prev_t": prev_t,
+            "orders": orders,
+            "equity": book.equity(&market, t),
+            "prices": prices,
+        })
+    })
+    .await
+    .map_err(|e| ApiError::bad_request(e.to_string()))?;
+    Ok(Json(result))
 }

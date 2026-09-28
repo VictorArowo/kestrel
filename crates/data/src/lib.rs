@@ -142,7 +142,10 @@ impl DataClient {
             let status = resp.status();
             if status == reqwest::StatusCode::FORBIDDEN && !crypto && self.feed != "iex" {
                 tracing::warn!(symbol, feed = %self.feed, "feed refused, falling back to iex");
-                let fallback = DataClient { feed: "iex".into(), ..self.clone() };
+                let fallback = DataClient {
+                    feed: "iex".into(),
+                    ..self.clone()
+                };
                 return Box::pin(fallback.fetch(symbol, start, end)).await;
             }
             if !status.is_success() {

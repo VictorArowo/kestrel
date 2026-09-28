@@ -184,3 +184,85 @@ fn rebalance_holds_the_strongest() {
     assert_eq!(r.holdings.len(), 1);
     assert_eq!(r.holdings[0].symbol, "UPP");
 }
+
+/// Paper trading calls `decide` with the live book after each close. Rebuild the book from a
+/// backtest's own fills, day by day, and check `decide` asks for exactly the trades the backtest
+/// made the next morning. If this holds, paper trading and backtesting can't drift apart.
+#[test]
+fn live_decisions_match_the_backtest() {
+    use kestrel_core::backtest::{Book, OrderKind, Position, decide};
+    use kestrel_core::eval::Evaluator;
+
+    let closes: Vec<f64> = (0..250)
+        .map(|i| 100.0 + (i as f64 * 0.21).sin() * 12.0 + i as f64 * 0.04)
+        .collect();
+    let other: Vec<f64> = (0..250)
+        .map(|i| 80.0 + (i as f64 * 0.13).cos() * 9.0)
+        .collect();
+    let m = market(&[("AAA", closes), ("BBB", other)]);
+    let s = strategy(json!({
+        "name": "two-symbol rsi",
+        "universe": { "symbols": ["AAA", "BBB"] },
+        "rules": [
+            { "when": { "lt": [{ "rsi": { "period": 10 } }, 40] }, "then": { "buy": { "percent_of_portfolio": 45 } } },
+            { "when": { "gt": [{ "rsi": { "period": 10 } }, 60] }, "then": { "sell": {} } }
+        ]
+    }));
+    let cfg = config(250);
+    let r = backtest::run(&s, &m, &cfg).unwrap();
+    assert!(r.fills.len() > 10, "the strategy should trade");
+
+    let ev = Evaluator::new(&m);
+    let mut book = Book {
+        cash: cfg.initial_cash,
+        ..Default::default()
+    };
+    let days: Vec<i64> = r.equity.iter().map(|p| p.t).collect();
+    for (k, &t) in days.iter().enumerate() {
+        // Apply this morning's fills, the way paper trading settles them.
+        for f in r.fills.iter().filter(|f| f.t == t) {
+            match f.side {
+                Side::Buy => {
+                    book.cash -= f.qty * f.price + f.fee;
+                    let p = book.positions.entry(f.symbol.clone()).or_insert(Position {
+                        qty: 0.0,
+                        entry_price: f.price,
+                        entry_t: t,
+                        entry_fees: 0.0,
+                    });
+                    p.qty += f.qty;
+                    p.entry_fees += f.fee;
+                }
+                Side::Sell => {
+                    book.cash += f.qty * f.price - f.fee;
+                    let p = book.positions.get_mut(&f.symbol).unwrap();
+                    p.qty -= f.qty;
+                    if p.qty <= 1e-12 {
+                        book.positions.remove(&f.symbol);
+                    }
+                }
+            }
+        }
+        let prev = k.checked_sub(1).map(|i| days[i]);
+        let mut wanted: Vec<(String, Side)> = decide(&s, &ev, &book, t, prev)
+            .into_iter()
+            .map(|o| {
+                let side = match o.kind {
+                    OrderKind::Buy { .. } => Side::Buy,
+                    _ => Side::Sell,
+                };
+                (o.symbol, side)
+            })
+            .collect();
+        let Some(&next) = days.get(k + 1) else { break };
+        let mut made: Vec<(String, Side)> = r
+            .fills
+            .iter()
+            .filter(|f| f.t == next)
+            .map(|f| (f.symbol.clone(), f.side))
+            .collect();
+        wanted.sort_by(|a, b| a.0.cmp(&b.0));
+        made.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(wanted, made, "decisions after the {t} close");
+    }
+}

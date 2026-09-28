@@ -4,6 +4,7 @@ import { asc, desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { db, equitySnapshots, orders, portfolios, strategies } from "@/db";
 import { EquityChart } from "@/components/equity-chart";
+import { PortfolioControls, RunCycleButton } from "@/components/portfolio-controls";
 import { date, money, num, pct, tone } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -50,11 +51,21 @@ export default async function PortfolioPage(props: PageProps<"/portfolios/[id]">
             )}
           </p>
         </div>
-        <div className="text-right">
+        <div className="text-right space-y-2">
           <div className="text-2xl text-ink">{money(latest)}</div>
           <div className={`text-xs ${tone(latest - p.initialCash)}`}>{pct((latest / p.initialCash - 1) * 100, 2)} since deployment</div>
+          <PortfolioControls id={p.id} status={p.status} />
         </div>
       </header>
+
+      <section className="flex flex-wrap items-center justify-between gap-3 text-2xs text-dim">
+        <span>
+          {p.lastDecidedT
+            ? `Last decided on the ${date(p.lastDecidedT)} close. Stock orders fill at the next open; crypto fills right away.`
+            : "Not checked yet. The strategy is checked after each daily close."}
+        </span>
+        <RunCycleButton />
+      </section>
 
       <section className="panel p-4">
         {equity.length >= 2 ? (

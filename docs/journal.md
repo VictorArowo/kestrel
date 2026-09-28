@@ -246,3 +246,35 @@ disconnects.
 Small things caught while looking at it: the chart's canvas can't read CSS variables for its
 font; a gap between two percentages is "pts", not "%"; the agent writes Markdown links to
 strategy pages, so the renderer now handles links (internal ones only).
+
+## 2026-09-28 · Paper trading
+
+**The loop** (`web/src/paper/cycle.ts`, run by `npm run paper` every 15 minutes or the "Run
+paper trading now" button):
+1. **Settle:** poll Alpaca for every submitted order; apply fills to the portfolio's book.
+2. **Decide:** for each active portfolio with no orders in flight, send its book to the
+   engine's new `/v1/decide`, which runs the backtest's own `decide()` on the latest completed
+   bar. Each portfolio decides once per bar (`last_decided_t`), so running the loop often is
+   harmless.
+3. **Send:** turn the engine's intents (buy dollars, sell a fraction, target a weight) into
+   Alpaca market orders. Stocks use `day` orders, which Alpaca queues for the next regular
+   open when submitted overnight, the same "fill at the next open" the backtest assumes.
+   Crypto trades around the clock with `gtc`.
+4. **Record** equity at the latest close.
+
+A Postgres advisory lock stops two cycles overlapping (the button and the loop, say). Every
+portfolio is a virtual sub-ledger on the one Alpaca paper account.
+
+**A test for the central claim.** "Paper trading makes the same decisions as the backtest" was
+true by construction (one function), but that's an argument, not evidence. The new test
+replays a 250-day, two-symbol backtest day by day: it rebuilds the book from the backtest's own
+fills, calls `decide()` exactly as paper trading does, and checks it asks for exactly the trades
+the backtest made the next morning. Every day matched. 18 Rust tests now.
+
+**First live order.** A throwaway strategy ("buy half the portfolio in BTC") on a $1,000
+portfolio: decided on the 2026-09-27 close, submitted, filled, settled. The fill looked wrong at
+first: $500 notional, but 0.005854688 BTC at $83,773.58 is only $490.47. Alpaca's account cash
+confirmed it had charged exactly $490.47: the notional order filled in two pieces totalling
+98% of the request. The ledger records fills rather than intents, so it matched Alpaca to the
+cent. A useful reminder that live execution doesn't match intent exactly, which is the whole
+reason to paper trade before trusting a backtest.

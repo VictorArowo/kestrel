@@ -180,6 +180,19 @@ export const engine = {
     objective?: string;
     top?: number;
   }) => call<OptimizeResponse>("/v1/optimize", { body: { ...body, end: body.end ?? undefined } }),
+  decide: (strategy: unknown, book: Book, asOf?: string) =>
+    call<DecideResponse>("/v1/decide", { body: { strategy, book, as_of: asOf } }),
+};
+
+export type DecideResponse = {
+  /** The bar date decided on. */
+  t: number;
+  date: string;
+  prev_t: number | null;
+  orders: EngineOrder[];
+  /** The book marked at that bar's closes. */
+  equity: number;
+  prices: Record<string, number | null>;
 };
 
 /** Keep charts light: at most `max` points, always including the last. */

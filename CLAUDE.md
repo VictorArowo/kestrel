@@ -27,7 +27,14 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo run -p kestrel-server -- serve
 cargo run -p kestrel-server -- backtest examples/crypto-trend.json --start 2022-01-01
 docker compose up -d          # Postgres on localhost:5439 (5433 is taken by another project)
+cd web && npm run dev -- -p 3100   # the app (3000 is taken by another project)
+cd web && npm run paper            # paper trading loop; `-- --once` for a single cycle
+cd web && npm run typecheck && npm run lint
 ```
+
+The app's preview tool reads launch configs from the folder this project's first chat started
+in (`/Users/victor/Projects/tape/.claude/launch.json`, git-ignored there), which has
+`kestrel-engine` and `kestrel-web` entries.
 
 ## Conventions
 
