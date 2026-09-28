@@ -170,3 +170,43 @@ yet, so it was a dependency swap (`@anthropic-ai/sdk` → `openai` 7.23) plus do
   `response.text.delta` and `response.reasoning_summary.delta`. The SDK's own type
   definitions say `response.output_text.delta`, `response.reasoning_summary_text.delta` and
   `response.function_call_arguments.delta`. Check the installed types, not the summary.
+
+## 2026-09-28 · Keys in, data depth, and the first full agent run
+
+**Data depth.** Alpaca's free `iex` feed only goes back to **2020-07-27** for stocks (plus one
+stray SPY bar from 2018, which showed up as a 634-day gap). Six years is thin for a backtest.
+The free plan can also read the `sip` feed (all exchanges) for anything older than 15
+minutes, and that goes back to January 2016: 2,680 daily SPY bars. `sip` is now the default,
+with an automatic fallback to `iex` if Alpaca refuses it. Crypto history starts in 2021.
+
+**Schema** (Drizzle, `web/src/db/schema.ts`): conversations store the Responses API item
+history as JSON and replay it each turn; `tool_runs` stores the full payload behind each tool
+call (equity curves, trades) so the UI can draw cards while the model only sees a compact
+summary; strategies; portfolios hold a `book` in exactly the engine's shape so it can be sent
+straight to a future `/v1/decide`; orders; equity snapshots.
+
+**The agent** (`web/src/agent/`): a manual streaming loop over the Responses API with
+`gpt-6-sol`, medium reasoning effort, and reasoning summaries streamed to the UI. Eight tools:
+search_symbols, get_snapshots, propose_plan, validate_strategy, run_backtest,
+optimize_strategy, save_strategy, propose_deployment. Every tool's arguments are validated
+with zod before running. `propose_plan` ends the turn and sets the conversation to
+`awaiting_approval`. `propose_deployment` only shows a button. A small but important detail: a
+model turn's function calls and their outputs are saved together, because a saved function
+call without its output makes the next request fail.
+
+**First run.** Asked for "rotate monthly between SPY, QQQ, TLT and GLD, holding the top 2 by
+3-month momentum". It proposed a plan and stopped. After approval it pulled snapshots,
+validated, backtested June 2016 to September 2026, saved, and offered paper trading. Its
+summary:
+
+> From June 2016 to September 2026, the backtest returned **161% versus 332% for holding
+> SPY**. Annualized returns were 9.75% versus 15.24%; maximum drawdown was slightly worse, at
+> 35.19% versus 33.79%. [...] This is a faithful test of your rule, but the historical case
+> for it over SPY is weak.
+
+It didn't try to tune its way to a better number, and it put the benchmark comparison first.
+That's the behaviour the instructions ask for.
+
+**Dev friction:** the app's preview tool reads the launch config of the folder the chat
+started in (tape), so the kestrel dev servers are registered there too (that file is
+git-ignored). Port 3000 is taken by another project's container, so the web app runs on 3100.

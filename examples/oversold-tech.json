@@ -1,0 +1,16 @@
+{
+  "name": "Oversold large-cap tech",
+  "description": "Buy dips in big tech stocks that are still in a long-term uptrend.",
+  "universe": { "symbols": ["AAPL", "MSFT", "NVDA", "GOOGL", "META", "AMZN"] },
+  "rules": [
+    {
+      "when": { "all": [
+        { "lt": [{ "rsi": { "period": 14 } }, 30] },
+        { "gt": [{ "price": {} }, { "sma": { "period": 200 } }] }
+      ]},
+      "then": { "buy": { "percent_of_portfolio": 15 } }
+    },
+    { "when": { "gt": [{ "rsi": { "period": 14 } }, 70] }, "then": { "sell": {} } }
+  ],
+  "risk": { "max_positions": 5, "stop_loss_pct": 10 }
+}

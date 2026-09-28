@@ -29,8 +29,10 @@ struct CacheFile {
 }
 
 impl DataClient {
-    /// Reads `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY` and optionally `APCA_DATA_FEED` (default
-    /// `iex`, the feed free accounts get). Crypto works without keys; stocks don't.
+    /// Reads `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY` and optionally `APCA_DATA_FEED`. The
+    /// default is `sip` (every US exchange): free accounts can read it for anything older than 15
+    /// minutes, and it goes back to 2016, where `iex` only starts in mid-2020. Crypto works
+    /// without keys; stocks don't.
     pub fn from_env(cache_dir: impl Into<PathBuf>) -> Self {
         let key = std::env::var("APCA_API_KEY_ID")
             .ok()
@@ -45,7 +47,7 @@ impl DataClient {
                 .build()
                 .expect("http client"),
             keys: key.zip(secret),
-            feed: std::env::var("APCA_DATA_FEED").unwrap_or_else(|_| "iex".into()),
+            feed: std::env::var("APCA_DATA_FEED").unwrap_or_else(|_| "sip".into()),
             cache_dir: cache_dir.into(),
         }
     }
@@ -138,6 +140,11 @@ impl DataClient {
                 .await
                 .with_context(|| format!("fetching {symbol}"))?;
             let status = resp.status();
+            if status == reqwest::StatusCode::FORBIDDEN && !crypto && self.feed != "iex" {
+                tracing::warn!(symbol, feed = %self.feed, "feed refused, falling back to iex");
+                let fallback = DataClient { feed: "iex".into(), ..self.clone() };
+                return Box::pin(fallback.fetch(symbol, start, end)).await;
+            }
             if !status.is_success() {
                 let body = resp.text().await.unwrap_or_default();
                 return Err(anyhow!(
