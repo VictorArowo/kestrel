@@ -2,10 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { ownerOnly } from "@/lib/owner";
 import { runCycle } from "@/paper/cycle";
 
-// Settling and deciding for every portfolio can take a while.
-export const maxDuration = 300;
-
-/** Vercel Cron calls this with the CRON_SECRET bearer token. */
+/** The paper trading loop (the `paper` container) calls this with the CRON_SECRET bearer token. */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   const got = request.headers.get("authorization") ?? "";

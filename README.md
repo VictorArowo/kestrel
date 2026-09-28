@@ -68,6 +68,14 @@ cd web && npm run dev -- -p 3100        # the app, on :3100
 cd web && npm run paper                 # paper trading loop, every 15 minutes
 ```
 
+## Deploying
+
+`deploy/` has everything for one small server: Dockerfiles for the engine and the app, a
+Compose file that runs them behind [Caddy](https://caddyserver.com) (automatic HTTPS) with a
+paper trading loop, and a nightly SQLite backup. Pushing to `main` tests, builds both images
+into GitHub's container registry and rolls the server onto them
+(`.github/workflows/deploy.yml`).
+
 The engine also works on its own:
 
 ```sh

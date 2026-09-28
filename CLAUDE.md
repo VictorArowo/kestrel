@@ -35,6 +35,19 @@ The app's preview tool reads launch configs from the folder this project's first
 in (`/Users/victor/Projects/tape/.claude/launch.json`, git-ignored there), which has
 `kestrel-engine` and `kestrel-web` entries.
 
+## Production
+
+A DigitalOcean droplet at 157.245.139.252 (Ubuntu 24.04, 1 vCPU, 2 GB) serves
+https://kestrel.victorarowo.com. Everything is in `deploy/`: Dockerfiles, `compose.yml`
+(engine, web, a paper trading loop, Caddy) and `backup.sh`. Pushing to `main` runs
+`.github/workflows/deploy.yml`: tests, builds both images to GHCR, copies the Compose file over
+and restarts. On the server everything lives in `/opt/kestrel` (`.env`, `data/kestrel.db`,
+`backups/`), owned by the `deploy` user; SSH in as `deploy@157.245.139.252`. The DNS record is
+an A record in Vercel DNS (victorarowo.com is managed there).
+
+Only production runs paper trading: don't run `npm run paper` locally, since both would trade
+on the same Alpaca paper account.
+
 ## Conventions
 
 - Backtests stay honest: decide after the close, fill at the next open, slippage and fees on,
