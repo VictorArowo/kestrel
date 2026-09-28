@@ -14,7 +14,7 @@ finding (bugs, surprising results, design choices). It's source material for a b
   evaluator, backtester (`decide()` is shared with paper trading), metrics, optimizer.
 - `crates/data`: Alpaca daily bars with a JSON cache in `data/cache`, symbol catalog.
 - `crates/server`: the `kestrel` binary: `serve` (HTTP API on :7070) and `backtest <file>`.
-- `web/`: Next.js 16 app (UI, agent loop with the OpenAI Responses API via the `openai` SDK, Postgres via Drizzle).
+- `web/`: Next.js 16 app (UI, agent loop with the OpenAI Responses API via the `openai` SDK, SQLite via Drizzle and libSQL; the file is `data/kestrel.db`).
   Next 16 differs from older versions: read `web/node_modules/next/dist/docs/` before
   writing Next code (async `params`, `PageProps<'/route'>`, `RouteContext`).
 - `examples/`: strategy files.
@@ -26,7 +26,6 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo run -p kestrel-server -- serve
 cargo run -p kestrel-server -- backtest examples/crypto-trend.json --start 2022-01-01
-docker compose up -d          # Postgres on localhost:5439 (5433 is taken by another project)
 cd web && npm run dev -- -p 3100   # the app (3000 is taken by another project)
 cd web && npm run paper            # paper trading loop; `-- --once` for a single cycle
 cd web && npm run typecheck && npm run lint

@@ -26,7 +26,7 @@ web/ (Next.js 16, TypeScript)
   agent        OpenAI Responses API loop with eight validated tools
   UI           chat with result cards, strategy pages, paper portfolios
   paper/       settles fills, asks the engine for decisions, sends Alpaca paper orders
-  Postgres     conversations, strategies, portfolios, orders, equity (Drizzle)
+  SQLite       conversations, strategies, portfolios, orders, equity (Drizzle, libSQL)
         │ HTTP
 crates/ (Rust)
   core         strategy format, validation, English rendering, indicators,
@@ -57,13 +57,12 @@ position when RSI(14) > 70. Sells any position that falls 10% below its entry.*
 
 ## Running it
 
-You need Rust, Node 22, Docker, a free [Alpaca](https://alpaca.markets) paper account and an
-OpenAI API key.
+You need Rust, Node 22, a free [Alpaca](https://alpaca.markets) paper account and an OpenAI
+API key. The database is a single SQLite file, `data/kestrel.db`.
 
 ```sh
 cp .env.example .env               # then add your keys
-docker compose up -d               # Postgres on localhost:5439
-cd web && npm install && npm run db:migrate && cd ..
+cd web && npm install && npm run db:migrate && cd ..   # creates data/kestrel.db
 cargo run -p kestrel-server -- serve    # the engine, on :7070
 cd web && npm run dev -- -p 3100        # the app, on :3100
 cd web && npm run paper                 # paper trading loop, every 15 minutes

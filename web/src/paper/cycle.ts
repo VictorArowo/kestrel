@@ -3,7 +3,7 @@
 // portfolio decides once per bar, and a lease stops cycles overlapping.
 
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, lt } from "drizzle-orm";
 import { db, equitySnapshots, leases, orders, portfolios, strategies } from "@/db";
 import { type Book, type EngineOrder, engine } from "@/lib/engine";
 import { AlpacaError, alpaca } from "./alpaca";
@@ -41,7 +41,7 @@ async function acquire(holder: string): Promise<boolean> {
     .onConflictDoUpdate({
       target: leases.name,
       set: { holder, expiresAt },
-      setWhere: sql`${leases.expiresAt} < now()`,
+      setWhere: lt(leases.expiresAt, new Date()),
     })
     .returning({ holder: leases.holder });
   return rows[0]?.holder === holder;

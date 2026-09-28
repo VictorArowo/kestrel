@@ -278,3 +278,44 @@ confirmed it had charged exactly $490.47: the notional order filled in two piece
 98% of the request. The ledger records fills rather than intents, so it matched Alpaca to the
 cent. A useful reminder that live execution doesn't match intent exactly, which is the whole
 reason to paper trade before trusting a backtest.
+
+## 2026-09-28 · Deployment detours, and Postgres → SQLite
+
+**Demo mode** landed first: owner sign-in through a secret link (`/owner?token=...`, stored
+as a hashed httpOnly cookie), and read-only visitors who see public strategies, portfolios
+whose strategy is public, and recorded agent sessions played back as they happened (text
+types out, tool calls show "running" before their card appears). Every route that costs
+money or changes state checks for the owner server-side, not just in the UI.
+
+**Vercel first.** Victor wanted everything on Vercel, where his other sites live. Vercel's
+Rust runtime went into public beta in December 2025, with an Axum adapter, so the engine's
+existing router could run as a function almost unchanged (`deploy/engine`). The serverless
+constraints showed up one by one:
+- No persistent disk: bar cache in `/tmp`, fine for a cache.
+- Paper trading can't be a loop: two Vercel Cron jobs instead (after the daily close, and
+  after the US open to settle stock fills).
+- Postgres advisory locks don't survive a transaction-mode connection pooler: replaced with a
+  lease row (`INSERT ... ON CONFLICT DO UPDATE ... WHERE expires_at < now`). Tested by firing
+  two cycles at once; one ran, one skipped.
+
+**Then: "can we use SQLite, so it's all self-contained?"** Not on Vercel: functions have no
+disk that survives, so every write (chats, strategies, paper trades) would vanish. That
+reframed the hosting question. A stateful app with a long-running loop fits one small server
+better than serverless, while static sites fit Vercel better than a server. The plan became
+a hybrid: other sites stay on Vercel, Kestrel moves to a VPS.
+
+**Getting a VPS was its own story.** Hetzner has been restricting new cloud servers since
+June 26 because of hardware shortages, for new customers and a random selection of existing
+ones, with no workaround. DigitalOcean was next; card payments were being declined at the
+time of writing.
+
+**The SQLite switch** (done while that gets sorted) uses libSQL, so one codebase covers both
+futures: `DATABASE_URL=file:../data/kestrel.db` on a server, or a Turso URL if Kestrel stays on
+Vercel. What changed:
+- Schema: `uuid` → text ids generated in code, `jsonb` → JSON-mode text, `timestamp` →
+  millisecond integers, `bigint` → integer.
+- The lease's `now()` became a comparison with the current time passed in.
+- WAL mode and a busy timeout so the app and the paper loop can share the file.
+- A one-off script copied everything from Postgres. Nothing was lost: 3 sessions, 20 tool
+  cards, 4 strategies, the paper portfolio (cash matched to the cent), its order and equity.
+- Docker is no longer needed for local development.
