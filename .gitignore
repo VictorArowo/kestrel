@@ -8,3 +8,4 @@ node_modules
 .DS_Store
 .vercel
 .env*
+!.env.example
