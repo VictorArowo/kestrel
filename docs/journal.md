@@ -139,9 +139,8 @@ build continues in a chat opened on this folder.
 1. DB schema (Drizzle): conversations (messages as JSON), strategies (spec, English, latest
    backtest), portfolios (virtual sub-ledgers on one Alpaca paper account), orders, equity
    snapshots.
-2. Agent route: `claude-opus-5`, adaptive thinking (summarized display), streaming manual tool
-   loop, `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`), `eager_input_streaming`
-   on tools with zod validation. Tools: search_symbols, get_snapshot, validate_strategy,
+2. Agent route (see the next entry: now OpenAI, not Anthropic): streaming manual tool loop
+   with zod validation of every tool input. Tools: search_symbols, get_snapshot, validate_strategy,
    run_backtest, optimize, propose_plan (ends the turn, waits for approval), save_strategy,
    propose_deployment (shows a Deploy button; the user's click deploys, not the agent). SSE to
    the browser.
@@ -154,3 +153,20 @@ build continues in a chat opened on this folder.
 
 **Needs from Victor:** Alpaca paper API keys and an Anthropic API key in `.env` (template in
 `.env.example`). Crypto works without Alpaca keys; stocks and paper trading don't.
+
+## 2026-09-28 · Switching the agent to OpenAI
+
+Victor chose OpenAI for the agent instead of Anthropic. Nothing agent-side had been written
+yet, so it was a dependency swap (`@anthropic-ai/sdk` → `openai` 7.23) plus doc updates.
+
+- **Model:** `gpt-6-sol`. OpenAI's model list describes it as built for "complex coding and
+  agentic workflows" (`gpt-6-astra` is the most capable, `gpt-6-luna` the most efficient).
+  It can be overridden with `KESTREL_AGENT_MODEL`.
+- **API:** the Responses API, with function tools (`strict: true` JSON schemas) and a manual
+  loop: send input, run each `function_call` item, append `function_call_output` items with
+  the matching `call_id`, repeat. Reasoning items have to be passed back along with the tool
+  outputs.
+- **A small lesson:** a summary of OpenAI's docs gave the stream event names as
+  `response.text.delta` and `response.reasoning_summary.delta`. The SDK's own type
+  definitions say `response.output_text.delta`, `response.reasoning_summary_text.delta` and
+  `response.function_call_arguments.delta`. Check the installed types, not the summary.

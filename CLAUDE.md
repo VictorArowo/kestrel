@@ -14,7 +14,7 @@ finding (bugs, surprising results, design choices). It's source material for a b
   evaluator, backtester (`decide()` is shared with paper trading), metrics, optimizer.
 - `crates/data`: Alpaca daily bars with a JSON cache in `data/cache`, symbol catalog.
 - `crates/server`: the `kestrel` binary: `serve` (HTTP API on :7070) and `backtest <file>`.
-- `web/`: Next.js 16 app (UI, agent loop with the Anthropic TS SDK, Postgres via Drizzle).
+- `web/`: Next.js 16 app (UI, agent loop with the OpenAI Responses API via the `openai` SDK, Postgres via Drizzle).
   Next 16 differs from older versions: read `web/node_modules/next/dist/docs/` before
   writing Next code (async `params`, `PageProps<'/route'>`, `RouteContext`).
 - `examples/`: strategy files.
